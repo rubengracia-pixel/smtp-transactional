@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: SMTP Transactional
- * Description: Configura el envio SMTP para WordPress/WooCommerce, con cifrado de contrasena y prueba de correo.
- * Version: 1.1.0
+ * Description: Configura el envío SMTP para WordPress/WooCommerce, con cifrado de contraseña y prueba de correo.
+ * Version: 1.0.0
  * Author: Codex Assistant
  */
 
@@ -18,7 +18,7 @@ add_action('admin_init', 'smtp_transactional_handle_requests');
 add_action('phpmailer_init', 'smtp_transactional_configure_phpmailer');
 
 /**
- * Agrega la pagina de opciones bajo Ajustes.
+ * Agrega la página de opciones bajo Ajustes.
  */
 function smtp_transactional_add_menu(): void {
     add_options_page(
@@ -31,7 +31,7 @@ function smtp_transactional_add_menu(): void {
 }
 
 /**
- * Devuelve la configuracion con valores por defecto.
+ * Devuelve la configuración con valores por defecto.
  */
 function smtp_transactional_get_settings(): array {
     $defaults = [
@@ -55,21 +55,22 @@ function smtp_transactional_get_settings(): array {
 }
 
 /**
- * Maneja guardado, prueba de envio y chequeo de conexion.
+ * Maneja guardado de opciones, envío de prueba y chequeo de conexión.
  */
 function smtp_transactional_handle_requests(): void {
     if (!current_user_can('manage_options')) {
         return;
     }
 
-    if (isset($_POST['smtp_transactional_save'])) {
+    if (isset($_POST['smtp_transactional_save']) || isset($_POST['smtp_transactional_check_connection'])) {
         check_admin_referer('smtp_transactional_save_settings');
-        smtp_transactional_save_settings();
-    }
-
-    if (isset($_POST['smtp_transactional_check_connection'])) {
-        check_admin_referer('smtp_transactional_check_connection', 'smtp_transactional_check_connection_nonce');
-        smtp_transactional_check_connection();
+        if (isset($_POST['smtp_transactional_save'])) {
+            smtp_transactional_save_settings();
+        }
+        if (isset($_POST['smtp_transactional_check_connection'])) {
+            check_admin_referer('smtp_transactional_check_connection', 'smtp_transactional_check_connection_nonce');
+            smtp_transactional_check_connection();
+        }
     }
 
     if (isset($_POST['smtp_transactional_send_test'])) {
@@ -79,7 +80,7 @@ function smtp_transactional_handle_requests(): void {
 }
 
 /**
- * Sanitiza y guarda la configuracion.
+ * Sanitiza y guarda la configuración.
  */
 function smtp_transactional_save_settings(): void {
     $settings = smtp_transactional_get_settings();
@@ -97,16 +98,16 @@ function smtp_transactional_save_settings(): void {
     $settings['reply_to']   = sanitize_email(wp_unslash($_POST['reply_to'] ?? ''));
 
     if (!empty($_POST['app_password'])) {
-        $raw_password             = sanitize_text_field(wp_unslash($_POST['app_password']));
+        $raw_password              = sanitize_text_field(wp_unslash($_POST['app_password']));
         $settings['app_password'] = smtp_transactional_encrypt($raw_password);
     }
 
     update_option(SMTP_TRANSACTIONAL_OPTION_KEY, $settings);
-    add_settings_error(SMTP_TRANSACTIONAL_MESSAGE_KEY, 'settings_saved', __('Configuracion guardada.', 'smtp-transactional'), 'updated');
+    add_settings_error(SMTP_TRANSACTIONAL_MESSAGE_KEY, 'settings_saved', __('Configuración guardada.', 'smtp-transactional'), 'updated');
 }
 
 /**
- * Envios de prueba.
+ * Envía un correo de prueba usando wp_mail().
  */
 function smtp_transactional_send_test_email(): void {
     $test_email = sanitize_email(wp_unslash($_POST['test_email'] ?? ''));
@@ -118,30 +119,30 @@ function smtp_transactional_send_test_email(): void {
     }
 
     if (!is_email($test_email)) {
-        add_settings_error(SMTP_TRANSACTIONAL_MESSAGE_KEY, 'invalid_email', __('La direccion de prueba no es valida.', 'smtp-transactional'));
+        add_settings_error(SMTP_TRANSACTIONAL_MESSAGE_KEY, 'invalid_email', __('La dirección de prueba no es válida.', 'smtp-transactional'));
         return;
     }
 
     $subject = __('Prueba de SMTP Transactional', 'smtp-transactional');
-    $body    = __('Este es un correo de prueba enviado desde la configuracion SMTP Transactional.', 'smtp-transactional');
+    $body    = __('Este es un correo de prueba enviado desde la configuración SMTP Transactional.', 'smtp-transactional');
 
     $sent = wp_mail($test_email, $subject, $body);
 
     if ($sent) {
         add_settings_error(SMTP_TRANSACTIONAL_MESSAGE_KEY, 'test_sent', __('Correo de prueba enviado correctamente.', 'smtp-transactional'), 'updated');
     } else {
-        add_settings_error(SMTP_TRANSACTIONAL_MESSAGE_KEY, 'test_failed', __('No se pudo enviar el correo de prueba. Verifica la configuracion o activa WP_DEBUG para mas detalles.', 'smtp-transactional'));
+        add_settings_error(SMTP_TRANSACTIONAL_MESSAGE_KEY, 'test_failed', __('No se pudo enviar el correo de prueba. Verifica la configuración o activa WP_DEBUG para más detalles.', 'smtp-transactional'));
     }
 }
 
 /**
- * Prueba la conexion al puerto SMTP mediante fsockopen().
+ * Prueba la conexión al puerto SMTP mediante fsockopen().
  */
 function smtp_transactional_check_connection(): void {
     $settings = smtp_transactional_get_settings();
 
     if (empty($settings['host']) || empty($settings['port'])) {
-        add_settings_error(SMTP_TRANSACTIONAL_MESSAGE_KEY, 'missing_host', __('Define host y puerto antes de probar la conexion.', 'smtp-transactional'));
+        add_settings_error(SMTP_TRANSACTIONAL_MESSAGE_KEY, 'missing_host', __('Define host y puerto antes de probar la conexión.', 'smtp-transactional'));
         return;
     }
 
@@ -153,13 +154,13 @@ function smtp_transactional_check_connection(): void {
         fclose($fp);
         add_settings_error(SMTP_TRANSACTIONAL_MESSAGE_KEY, 'connection_ok', __('Conectado al servidor SMTP.', 'smtp-transactional'), 'updated');
     } else {
-        $message = sprintf(__('No se pudo conectar: %1$s (%2$s). Puerto bloqueado o credenciales incorrectas?', 'smtp-transactional'), $errstr ?: __('error desconocido', 'smtp-transactional'), $errno);
+        $message = sprintf(__('No se pudo conectar: %1$s (%2$s). ¿Puerto bloqueado o credenciales incorrectas?', 'smtp-transactional'), $errstr ?: __('error desconocido', 'smtp-transactional'), $errno);
         add_settings_error(SMTP_TRANSACTIONAL_MESSAGE_KEY, 'connection_failed', $message);
     }
 }
 
 /**
- * Aplica la configuracion al PHPMailer global.
+ * Aplica la configuración al PHPMailer global.
  */
 function smtp_transactional_configure_phpmailer($phpmailer): void {
     $settings = smtp_transactional_get_settings();
@@ -171,13 +172,13 @@ function smtp_transactional_configure_phpmailer($phpmailer): void {
     $decrypted_password = smtp_transactional_decrypt($settings['app_password']);
 
     $phpmailer->isSMTP();
-    $phpmailer->Host        = $settings['host'];
-    $phpmailer->Port        = (int) $settings['port'];
-    $phpmailer->SMTPAuth    = true;
-    $phpmailer->SMTPSecure  = $settings['encryption'] ?: '';
-    $phpmailer->Username    = $settings['smtp_user'] ?: $settings['from_email'];
-    $phpmailer->Password    = $decrypted_password;
-    $phpmailer->SMTPDebug   = (defined('WP_DEBUG') && WP_DEBUG) ? 2 : 0;
+    $phpmailer->Host       = $settings['host'];
+    $phpmailer->Port       = (int) $settings['port'];
+    $phpmailer->SMTPAuth   = true;
+    $phpmailer->SMTPSecure = $settings['encryption'] ?: '';
+    $phpmailer->Username   = $settings['smtp_user'] ?: $settings['from_email'];
+    $phpmailer->Password   = $decrypted_password;
+    $phpmailer->SMTPDebug  = (defined('WP_DEBUG') && WP_DEBUG) ? 2 : 0;
     $phpmailer->Debugoutput = 'error_log';
 
     $from_email = $settings['from_email'];
@@ -189,17 +190,17 @@ function smtp_transactional_configure_phpmailer($phpmailer): void {
         try {
             $phpmailer->addReplyTo($settings['reply_to'], $from_name);
         } catch (\Exception $e) {
-            // Ignorar problemas al asignar Reply-To para no bloquear el envio.
+            // Ignorar problemas al asignar Reply-To para no bloquear el envío.
         }
     }
 }
 
 /**
- * Renderiza la pagina de ajustes.
+ * Renderiza la página de ajustes.
  */
 function smtp_transactional_render_page(): void {
     if (!current_user_can('manage_options')) {
-        wp_die(__('No tienes permisos para acceder a esta pagina.', 'smtp-transactional'));
+        wp_die(__('No tienes permisos para acceder a esta página.', 'smtp-transactional'));
     }
 
     $settings = smtp_transactional_get_settings();
@@ -223,7 +224,7 @@ function smtp_transactional_render_page(): void {
                     <td><input name="port" type="number" id="port" value="<?php echo esc_attr((string) $settings['port']); ?>" class="small-text" required></td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="encryption"><?php esc_html_e('Encriptacion', 'smtp-transactional'); ?></label></th>
+                    <th scope="row"><label for="encryption"><?php esc_html_e('Encriptación', 'smtp-transactional'); ?></label></th>
                     <td>
                         <select name="encryption" id="encryption">
                             <?php
@@ -242,11 +243,11 @@ function smtp_transactional_render_page(): void {
                     </td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="smtp_user"><?php esc_html_e('Usuario SMTP (login/autenticacion)', 'smtp-transactional'); ?></label></th>
+                    <th scope="row"><label for="smtp_user"><?php esc_html_e('Usuario SMTP (autenticación)', 'smtp-transactional'); ?></label></th>
                     <td><input name="smtp_user" type="email" id="smtp_user" value="<?php echo esc_attr($settings['smtp_user']); ?>" class="regular-text" required></td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="from_email"><?php esc_html_e('Remitente visible (From/Alias)', 'smtp-transactional'); ?></label></th>
+                    <th scope="row"><label for="from_email"><?php esc_html_e('Remitente visible (From)', 'smtp-transactional'); ?></label></th>
                     <td><input name="from_email" type="email" id="from_email" value="<?php echo esc_attr($settings['from_email']); ?>" class="regular-text" required></td>
                 </tr>
                 <tr>
@@ -258,7 +259,7 @@ function smtp_transactional_render_page(): void {
                     <td><input name="reply_to" type="email" id="reply_to" value="<?php echo esc_attr($settings['reply_to']); ?>" class="regular-text"></td>
                 </tr>
                 <tr>
-                    <th scope="row"><label for="app_password"><?php esc_html_e('Contrasena de aplicacion', 'smtp-transactional'); ?></label></th>
+                    <th scope="row"><label for="app_password"><?php esc_html_e('Contraseña de aplicación', 'smtp-transactional'); ?></label></th>
                     <td>
                         <input name="app_password" type="password" id="app_password" value="" class="regular-text" placeholder="<?php echo esc_attr($settings['app_password'] ? __('(oculta, deja en blanco para no cambiar)', 'smtp-transactional') : '********'); ?>">
                         <p class="description"><?php esc_html_e('Guardada cifrada. Nunca se muestra en texto plano.', 'smtp-transactional'); ?></p>
@@ -267,7 +268,7 @@ function smtp_transactional_render_page(): void {
             </table>
             <p class="submit">
                 <button type="submit" name="smtp_transactional_save" class="button-primary"><?php esc_html_e('Guardar cambios', 'smtp-transactional'); ?></button>
-                <button type="submit" name="smtp_transactional_check_connection" class="button"><?php esc_html_e('Probar conexion', 'smtp-transactional'); ?></button>
+                <button type="submit" name="smtp_transactional_check_connection" class="button"><?php esc_html_e('Probar conexión', 'smtp-transactional'); ?></button>
             </p>
         </form>
 
@@ -291,7 +292,7 @@ function smtp_transactional_render_page(): void {
 }
 
 /**
- * Cifra la contrasena.
+ * Cifra la contraseña (openssl si está disponible).
  */
 function smtp_transactional_encrypt(string $value): string {
     $value = trim($value);
@@ -300,9 +301,8 @@ function smtp_transactional_encrypt(string $value): string {
     }
 
     if (function_exists('openssl_encrypt')) {
-        $key    = smtp_transactional_encryption_key();
-        $iv_len = openssl_cipher_iv_length('AES-256-CBC');
-        $iv     = smtp_transactional_random_bytes($iv_len);
+        $key  = smtp_transactional_encryption_key();
+        $iv   = smtp_transactional_random_bytes(openssl_cipher_iv_length('AES-256-CBC'));
         $cipher = openssl_encrypt($value, 'AES-256-CBC', $key, 0, $iv);
         if ($cipher !== false) {
             return base64_encode($iv . '::' . $cipher);
@@ -313,7 +313,7 @@ function smtp_transactional_encrypt(string $value): string {
 }
 
 /**
- * Descifra la contrasena.
+ * Descifra la contraseña almacenada.
  */
 function smtp_transactional_decrypt(string $stored): string {
     if ($stored === '') {
@@ -337,14 +337,14 @@ function smtp_transactional_decrypt(string $stored): string {
 }
 
 /**
- * Clave de cifrado basada en salts de WP.
+ * Genera la clave de cifrado basada en las salts de WordPress.
  */
 function smtp_transactional_encryption_key(): string {
     return hash('sha256', wp_salt('smtp-transactional'));
 }
 
 /**
- * Genera bytes para IV.
+ * Genera bytes seguros para IV.
  */
 function smtp_transactional_random_bytes(int $length): string {
     if (function_exists('random_bytes')) {
@@ -355,9 +355,11 @@ function smtp_transactional_random_bytes(int $length): string {
         return openssl_random_pseudo_bytes($length);
     }
 
+    // Fallback poco frecuente; no se expone la contraseña en texto plano.
     $fallback = '';
     for ($i = 0; $i < $length; $i++) {
         $fallback .= chr(mt_rand(0, 255));
     }
     return $fallback;
 }
+
